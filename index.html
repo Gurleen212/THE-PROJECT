@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RESQNET — Find blood, beds and ambulances in seconds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-view="public">
+
+  <div class="skip-target"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">ResQnet</span>
+    </div>
+    <nav class="role-nav" aria-label="Switch dashboard">
+      <button class="role-btn is-active" data-role="public" type="button">Find help</button>
+      <button class="role-btn" data-role="donor" type="button">Donors</button>
+      <button class="role-btn" data-role="hospital" type="button">Hospitals</button>
+      <button class="role-btn" data-role="bloodbank" type="button">Blood banks</button>
+      <button class="role-btn" data-role="ambulance" type="button">Ambulances</button>
+      <button class="role-btn" data-role="admin" type="button">District office</button>
+    </nav>
+  </header>
+
+  <!-- ============ PUBLIC VIEW ============ -->
+  <section class="view" id="view-public">
+
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="kicker">Emergency medical resource network — Rajpura · Patiala · Chandigarh · Mohali · Ludhiana</p>
+        <h1>Stop calling hospitals one by one.</h1>
+        <p class="hero-lede">ResQnet shows which nearby hospitals have a free bed, which blood banks have your blood group in stock, and which ambulance can reach you — updated live, searchable in seconds.</p>
+        <button class="sos-btn" id="open-sos" type="button">Send emergency SOS request</button>
+      </div>
+      <aside class="pulse-panel" aria-label="Live network status">
+        <h2>Network right now</h2>
+        <dl class="pulse-grid" id="pulse-grid"><!-- filled by JS --></dl>
+        <p class="pulse-note" id="pulse-note">Updating live as requests move through the network.</p>
+      </aside>
+    </section>
+
+    <section class="search-block">
+      <div class="search-tabs" role="tablist" aria-label="Search type">
+        <button class="tab-btn is-active" data-search="blood" type="button" role="tab">Blood</button>
+        <button class="tab-btn" data-search="bed" type="button" role="tab">Hospital beds</button>
+        <button class="tab-btn" data-search="ambulance" type="button" role="tab">Ambulance</button>
+      </div>
+
+      <form class="search-form" id="search-form">
+        <label class="field" id="field-group">
+          <span>Blood group</span>
+          <select id="search-group">
+            <option>O+</option><option>O-</option><option>A+</option><option>A-</option>
+            <option>B+</option><option>B-</option><option>AB+</option><option>AB-</option>
+          </select>
+        </label>
+        <label class="field" id="field-bedtype" hidden>
+          <span>Bed type</span>
+          <select id="search-bedtype">
+            <option>ICU</option><option>General</option><option>Ventilator</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>City</span>
+          <select id="search-city">
+            <option value="">Any nearby city</option>
+          </select>
+        </label>
+        <button class="primary-btn" type="submit">Search</button>
+      </form>
+
+      <div class="results" id="search-results" aria-live="polite"></div>
+    </section>
+  </section>
+
+  <!-- ============ SOS MODAL ============ -->
+  <div class="modal-backdrop" id="sos-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sos-title">
+      <div class="modal-head">
+        <h2 id="sos-title">Emergency SOS</h2>
+        <button class="modal-close" id="close-sos" type="button" aria-label="Close">✕</button>
+      </div>
+      <p class="modal-lede">This broadcasts your request to every matching resource near you at once. The nearest available one is notified first.</p>
+      <form id="sos-form" class="sos-form">
+        <label class="field">
+          <span>Patient or requester name</span>
+          <input type="text" id="sos-name" required maxlength="60" placeholder="e.g. for a family member">
+        </label>
+        <label class="field">
+          <span>What's needed</span>
+          <select id="sos-type">
+            <option value="blood">Blood unit</option>
+            <option value="bed">Hospital bed</option>
+            <option value="ambulance">Ambulance</option>
+          </select>
+        </label>
+        <label class="field" id="sos-field-group">
+          <span>Blood group</span>
+          <select id="sos-group">
+            <option>O+</option><option>O-</option><option>A+</option><option>A-</option>
+            <option>B+</option><option>B-</option><option>AB+</option><option>AB-</option>
+          </select>
+        </label>
+        <label class="field" id="sos-field-bedtype" hidden>
+          <span>Bed type</span>
+          <select id="sos-bedtype">
+            <option>ICU</option><option>General</option><option>Ventilator</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>City</span>
+          <select id="sos-city"></select>
+        </label>
+        <label class="field">
+          <span>Urgency</span>
+          <select id="sos-urgency">
+            <option value="critical">Critical — immediate</option>
+            <option value="urgent">Urgent — within the hour</option>
+            <option value="standard">Standard — today</option>
+          </select>
+        </label>
+        <button class="sos-submit" type="submit">Broadcast request now</button>
+      </form>
+      <div id="sos-result" class="sos-result" hidden></div>
+    </div>
+  </div>
+
+  <!-- ============ DONOR VIEW ============ -->
+  <section class="view" id="view-donor" hidden>
+    <div class="view-head">
+      <h1>Donor network</h1>
+      <p>Track eligibility and see who gets notified when a blood group runs low nearby.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Registered donors</h2>
+        <span class="panel-sub" id="donor-count-label"></span>
+      </div>
+      <table class="data-table" id="donor-table">
+        <thead>
+          <tr><th>Name</th><th>Group</th><th>City</th><th>Last donation</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody id="donor-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Shortage notifications sent</h2>
+        <span class="panel-sub">Auto-triggered when a bank drops below safe stock</span>
+      </div>
+      <ul class="notice-list" id="notice-list"></ul>
+    </div>
+  </section>
+
+  <!-- ============ HOSPITAL VIEW ============ -->
+  <section class="view" id="view-hospital" hidden>
+    <div class="view-head">
+      <h1>Hospital dashboard</h1>
+      <p>Manage live bed inventory and respond to incoming requests.</p>
+    </div>
+
+    <label class="field facility-picker">
+      <span>Signed in as</span>
+      <select id="hospital-picker"></select>
+    </label>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Live bed inventory</h2></div>
+      <table class="data-table" id="bed-table">
+        <thead><tr><th>Bed type</th><th>Total</th><th>Occupied</th><th>Available</th><th>Adjust occupied</th></tr></thead>
+        <tbody id="bed-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Incoming requests</h2></div>
+      <table class="data-table" id="hospital-requests-table">
+        <thead><tr><th>Patient</th><th>Bed type</th><th>Urgency</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="hospital-requests-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ BLOOD BANK VIEW ============ -->
+  <section class="view" id="view-bloodbank" hidden>
+    <div class="view-head">
+      <h1>Blood bank dashboard</h1>
+      <p>Manage stock by group and trigger donor recall alerts during a shortage.</p>
+    </div>
+
+    <label class="field facility-picker">
+      <span>Signed in as</span>
+      <select id="bloodbank-picker"></select>
+    </label>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Live stock, in units</h2></div>
+      <table class="data-table" id="stock-table">
+        <thead><tr><th>Group</th><th>Units in stock</th><th>Status</th><th>Adjust</th><th></th></tr></thead>
+        <tbody id="stock-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Incoming requests</h2></div>
+      <table class="data-table" id="bloodbank-requests-table">
+        <thead><tr><th>Patient</th><th>Group</th><th>Urgency</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="bloodbank-requests-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ AMBULANCE VIEW ============ -->
+  <section class="view" id="view-ambulance" hidden>
+    <div class="view-head">
+      <h1>Ambulance dashboard</h1>
+      <p>Manage fleet status and accept dispatch requests.</p>
+    </div>
+
+    <label class="field facility-picker">
+      <span>Signed in as</span>
+      <select id="ambulance-picker"></select>
+    </label>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Fleet status</h2></div>
+      <table class="data-table" id="fleet-table">
+        <thead><tr><th>Vehicle</th><th>Status</th><th>Change status</th></tr></thead>
+        <tbody id="fleet-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Incoming dispatch requests</h2></div>
+      <table class="data-table" id="ambulance-requests-table">
+        <thead><tr><th>Patient</th><th>Urgency</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="ambulance-requests-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ ADMIN VIEW ============ -->
+  <section class="view" id="view-admin" hidden>
+    <div class="view-head">
+      <h1>District health office</h1>
+      <p>City-wide view of demand, shortages and response.</p>
+    </div>
+
+    <div class="stat-row" id="admin-stats"></div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Resource heatmap by city</h2></div>
+      <div class="heatmap" id="heatmap"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Blood groups below safe stock</h2></div>
+      <table class="data-table" id="shortage-table">
+        <thead><tr><th>Blood bank</th><th>City</th><th>Group</th><th>Units</th><th>Severity</th></tr></thead>
+        <tbody id="shortage-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Full request log</h2></div>
+      <table class="data-table" id="log-table">
+        <thead><tr><th>Time</th><th>Type</th><th>Patient</th><th>City</th><th>Status</th><th>History</th></tr></thead>
+        <tbody id="log-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
